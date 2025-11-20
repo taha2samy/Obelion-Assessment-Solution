@@ -76,7 +76,7 @@ Go to your Main Infrastructure Repository -> **Settings** -> **Secrets and varia
 | :--- | :--- | :--- |
 | `TF_BACKEND_BUCKET` | Output: `backend_bucket_name` | The S3 bucket name. |
 | `TF_BACKEND_TABLE` | Output: `backend_dynamodb_table` | The DynamoDB table name. |
-| `TF_BACKEND_REGION` | Output: `backend_region` | The AWS Region (us-east-1). |
+| `TF_BACKEND_REGION` | Output: `backend_region` | The AWS Region (eu-west-1) |
 
 ---
 
