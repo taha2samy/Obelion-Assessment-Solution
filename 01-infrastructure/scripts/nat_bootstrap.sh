@@ -62,4 +62,4 @@ aws ec2 replace-route \
     --instance-id $INSTANCE_ID \
     --region $REGION
 
-echo "🎉 NAT Configuration Complete!"
+echo " NAT Configuration Complete!"
