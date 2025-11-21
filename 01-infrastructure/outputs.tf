@@ -16,7 +16,3 @@ output "db_endpoint" {
   value       = aws_db_instance.default.endpoint
 }
 
-output "nat_public_ip" {
-  description = "Public IP of the fck-nat Instance"
-  value       = aws_instance.fck_nat.public_ip
-}

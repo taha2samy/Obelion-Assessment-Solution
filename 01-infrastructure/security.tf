@@ -1,160 +1,164 @@
 # ==========================================
-# Data Sources
-# ==========================================
-data "aws_availability_zones" "available" {
-  state = "available"
-}
-
-# Fetch the latest fck-nat AMI (ARM64 for t4g instances)
-data "aws_ami" "fck_nat" {
-  most_recent = true
-  owners      = ["568608671756"]
-
-  filter {
-    name   = "name"
-    values = ["fck-nat-al2023-*-arm64-ebs"]
-  }
-}
-
-# ==========================================
-# VPC & Internet Gateway
-# ==========================================
-resource "aws_vpc" "main" {
-  cidr_block           = var.vpc_cidr
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-
-  tags = { Name = "obelion-vpc" }
-}
-
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-  tags   = { Name = "obelion-igw" }
-}
-
-# ==========================================
-# Subnets
+# Security Groups
 # ==========================================
 
-# 1. Public Subnet
-resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = var.public_subnet_cidr
-  availability_zone       = var.availability_zone
-  map_public_ip_on_launch = true
-  tags                    = { Name = "obelion-public-subnet" }
-}
+# 1. NAT Instance SG (Already added previously, ensuring it's here)
+resource "aws_security_group" "nat_sg" {
+  name        = "obelion-nat-sg"
+  description = "Security Group for fck-nat instance"
+  vpc_id      = aws_vpc.main.id
 
-# 2. Private Subnet 1 (Primary)
-resource "aws_subnet" "private_1" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = var.private_subnet_cidr
-  availability_zone = var.availability_zone
-  tags              = { Name = "obelion-private-subnet-1" }
-}
-
-# 3. Private Subnet 2 (Secondary)
-resource "aws_subnet" "private_2" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = cidrsubnet(var.vpc_cidr, 8, 12)
-  availability_zone = data.aws_availability_zones.available.names[1]
-  tags              = { Name = "obelion-private-subnet-2" }
-}
-
-# ==========================================
-# HA NAT Instance Configuration
-# ==========================================
-
-# 1. Launch Template
-resource "aws_launch_template" "nat_lt" {
-  name_prefix   = "obelion-nat-lt-"
-  image_id      = data.aws_ami.fck_nat.id
-  instance_type = "t4g.nano"
-  key_name      = aws_key_pair.deployer.key_name
-
-  vpc_security_group_ids = [aws_security_group.nat_sg.id]
-
-  iam_instance_profile {
-    name = aws_iam_instance_profile.nat_profile.name
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.vpc_cidr]
   }
 
-  # Inject variables into the external Bash script
-  user_data = base64encode(templatefile("${path.module}/scripts/nat_bootstrap.sh", {
-    region         = var.aws_region
-    route_table_id = aws_route_table.private.id
-  }))
-
-  tag_specifications {
-    resource_type = "instance"
-    tags = {
-      Name = "obelion-ha-nat"
-    }
-  }
-}
-
-# 2. Auto Scaling Group
-resource "aws_autoscaling_group" "nat_asg" {
-  name                = "obelion-nat-asg"
-  desired_capacity    = 1
-  max_size            = 1
-  min_size            = 1
-  vpc_zone_identifier = [aws_subnet.public.id]
-
-  launch_template {
-    id      = aws_launch_template.nat_lt.id
-    version = "$Latest"
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  health_check_type         = "EC2"
-  health_check_grace_period = 300
-
-  tag {
-    key                 = "Name"
-    value               = "obelion-ha-nat"
-    propagate_at_launch = true
-  }
+  tags = { Name = "obelion-nat-sg" }
 }
 
-# ==========================================
-# Route Tables
-# ==========================================
+# 2. Frontend Security Group
+# Allows HTTP/HTTPS from anywhere, SSH from anywhere (or restricted IP)
+resource "aws_security_group" "frontend_sg" {
+  name        = "obelion-frontend-sg"
+  description = "Security Group for Frontend Server"
+  vpc_id      = aws_vpc.main.id
 
-# 1. Public Route Table
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
+  # HTTP
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "obelion-public-rt" }
-}
-
-resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public.id
-  route_table_id = aws_route_table.public.id
-}
-
-# 2. Private Route Table
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.main.id
-
-  # NOTE: The route to 0.0.0.0/0 is managed dynamically by the NAT instance script.
-  # We use ignore_changes to prevent Terraform from fighting with the script.
-  lifecycle {
-    ignore_changes = [route]
+  # Uptime Kuma default port (3001) - Optional if you expose it directly
+  ingress {
+    from_port   = 3001
+    to_port     = 3001
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "obelion-private-rt" }
+  # SSH
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # In production, restrict this to your IP
+  }
+
+  # Outbound
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "obelion-frontend-sg" }
 }
 
-resource "aws_route_table_association" "private_1" {
-  subnet_id      = aws_subnet.private_1.id
-  route_table_id = aws_route_table.private.id
+# 3. Backend Security Group
+# Allows SSH, and Traffic from Frontend if needed
+resource "aws_security_group" "backend_sg" {
+  name        = "obelion-backend-sg"
+  description = "Security Group for Backend Server"
+  vpc_id      = aws_vpc.main.id
+
+  # HTTP (for API calls from Frontend or Public if it's a public API)
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # SSH
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Outbound
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "obelion-backend-sg" }
 }
 
-resource "aws_route_table_association" "private_2" {
-  subnet_id      = aws_subnet.private_2.id
-  route_table_id = aws_route_table.private.id
+# 4. Database Security Group
+# STRICT: Only allows traffic from Backend SG on port 3306
+resource "aws_security_group" "db_sg" {
+  name        = "obelion-db-sg"
+  description = "Security Group for RDS MySQL"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.backend_sg.id] # Only Backend can access
+  }
+
+  tags = { Name = "obelion-db-sg" }
+}
+resource "aws_iam_role" "nat_role" {
+  name = "obelion-nat-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
+  })
+}
+
+# 2. The Policy (Permissions to edit Routes & ENI)
+resource "aws_iam_policy" "nat_policy" {
+  name = "obelion-nat-policy"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:AttachNetworkInterface",
+          "ec2:ModifyNetworkInterfaceAttribute",
+          "ec2:AssociateAddress",
+          "ec2:DisassociateAddress",
+          "ec2:ReplaceRoute"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# 3. Attach Policy to Role
+resource "aws_iam_role_policy_attachment" "nat_attach" {
+  role       = aws_iam_role.nat_role.name
+  policy_arn = aws_iam_policy.nat_policy.arn
+}
+
+# 4. Instance Profile (To attach role to EC2)
+resource "aws_iam_instance_profile" "nat_profile" {
+  name = "obelion-nat-profile"
+  role = aws_iam_role.nat_role.name
 }
