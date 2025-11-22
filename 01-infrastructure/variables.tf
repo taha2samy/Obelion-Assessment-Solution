@@ -4,7 +4,7 @@
 variable "aws_region" {
   description = "The AWS region to deploy resources in"
   type        = string
-  default     = "us-east-1"
+  default     = "eu-west-1"
 }
 
 variable "environment" {
@@ -25,7 +25,7 @@ variable "vpc_cidr" {
 variable "availability_zone" {
   description = "The AZ to deploy resources in"
   type        = string
-  default     = "us-east-1a"
+  default     = "eu-west-1"
 }
 
 variable "public_subnet_cidr" {
