@@ -1,6 +1,0 @@
-[submodule "02-backend-app"]
-	path = 02-backend-app
-	url = https://github.com/taha2samy/laravel.git
-[submodule "03-frontend-app"]
-	path = 03-frontend-app
-	url = https://github.com/taha2samy/uptime-kuma.git
