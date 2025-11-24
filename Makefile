@@ -3,9 +3,10 @@ TF_DIR=01-infrastructure
 SSH_KEY_CONTENT := $(shell cat 05-keys/rsa.pub)
 GITHUB_REPO_FRONTEND := taha2samy/uptime-kuma
 FRONTEND_WORKFLOW_FILE := deploy-frontend.yml
-GITHUB_REPO_BACKEND :=
+BACKEND_WORKFLOW_FILE := deploy-backend.yml
+GITHUB_REPO_BACKEND := "https://github.com/taha2samy/laravel"
 export TF_VAR_ssh_public_key=$(SSH_KEY_CONTENT)
-export TF_VAR_db_password=123456789
+include .env
 GREEN := \033[0;32m
 NC := \033[0m
 
@@ -112,7 +113,7 @@ gh-deploy-backend:
 	@printf "$(GREEN)[+] [Backend] Secrets Updated. Triggering Workflow...$(NC)\n"
 	
 	@# 5. Trigger Workflow
-	@gh workflow run deploy.yml --ref main --repo $(GITHUB_REPO_BACKEND)
+	@gh workflow run $(BACKEND_WORKFLOW_FILE) --ref "12.x" --repo $(GITHUB_REPO_BACKEND)
 	
 	@printf "$(GREEN)[+] [Backend] Workflow triggered! Watching status...$(NC)\n"
 	@sleep 5

@@ -68,15 +68,45 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT }}    
           FRONTEND_REPO: "taha2samy/uptime-kuma"
           BACKEND_REPO: "taha2samy/laravel"
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }} 
         run: |
+          # 1. Fetch Values from Terraform Outputs
           FRONTEND_IP=$(terraform output -raw frontend_public_ip)
           BACKEND_IP=$(terraform output -raw backend_public_ip)
-          DB_ENDPOINT=$(terraform output -raw db_endpoint)
           
+          # Database Info
+          DB_ENDPOINT=$(terraform output -raw db_endpoint)
+          # Clean Host (Remove Port :3306) because Laravel .env has DB_PORT separate
+          DB_HOST=$(echo $DB_ENDPOINT | cut -d: -f1)
+          
+          DB_NAME=$(terraform output -raw db_name)
+          DB_USER=$(terraform output -raw db_username)
+          DB_PASS=$(terraform output -raw db_password)
+          SSH_USER=$(terraform output -raw ssh_user_backend)
 
+          echo "---------------------------------------------"
+          echo "🔄 Updating Frontend Repo ($FRONTEND_REPO)..."
+          # Frontend Variables & Secrets
           gh variable set FRONTEND_HOST -b "$FRONTEND_IP" -R $FRONTEND_REPO
-          gh secret set BACKEND_HOST -b "$BACKEND_IP" -R $BACKEND_REPO
-          gh secret set DB_HOST -b "$DB_ENDPOINT" -R $BACKEND_REPO
+          gh secret set SSH_USER -b "$SSH_USER" -R $FRONTEND_REPO
+          echo "$SSH_KEY" | gh secret set SSH_PRIVATE_KEY -R $FRONTEND_REPO
+
+          echo "---------------------------------------------"
+          echo "🔄 Updating Backend Repo ($BACKEND_REPO)..."
+          # Backend Variables (IP)
+          gh variable set BACKEND_HOST -b "$BACKEND_IP" -R $BACKEND_REPO
+          
+          # Backend SSH Secrets
+          gh secret set SSH_USER -b "$SSH_USER" -R $BACKEND_REPO
+          echo "$SSH_KEY" | gh secret set SSH_PRIVATE_KEY -R $BACKEND_REPO
+          
+          # Backend Database Secrets (For .env)
+          gh secret set DB_HOST -b "$DB_HOST" -R $BACKEND_REPO
+          gh secret set DB_DATABASE -b "$DB_NAME" -R $BACKEND_REPO
+          gh secret set DB_USERNAME -b "$DB_USER" -R $BACKEND_REPO
+          gh secret set DB_PASSWORD -b "$DB_PASS" -R $BACKEND_REPO
+          
+          echo "✅ All Secrets Updated Successfully!"
 
       - name: Generate Deployment Report
         if: inputs.action == 'apply'
@@ -84,7 +114,7 @@ jobs:
           FRONTEND_IP=$(terraform output -raw frontend_public_ip)
           BACKEND_IP=$(terraform output -raw backend_public_ip)
           DB_ENDPOINT=$(terraform output -raw db_endpoint)
-          NAT_IP=$(terraform output -raw nat_public_ip)
+          # NAT_IP=$(terraform output -raw nat_public_ip) # Uncomment if you have NAT
 
           echo "## 🚀 Infrastructure Report" >> $GITHUB_STEP_SUMMARY
           echo "| Resource | IP / Endpoint |" >> $GITHUB_STEP_SUMMARY
@@ -92,4 +122,4 @@ jobs:
           echo "| **Frontend** | \`$FRONTEND_IP\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Backend** | \`$BACKEND_IP\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **Database** | \`$DB_ENDPOINT\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **NAT IP** | \`$NAT_IP\` |" >> $GITHUB_STEP_SUMMARY
+          # echo "| **NAT IP** | \`$NAT_IP\` |" >> $GITHUB_STEP_SUMMARY

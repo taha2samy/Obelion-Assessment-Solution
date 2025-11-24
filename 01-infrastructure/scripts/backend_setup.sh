@@ -18,6 +18,7 @@ sudo apt-get install -y php8.2 php8.2-fpm php8.2-mysql php8.2-mbstring \
 # 3. Install Composer
 curl -sS https://getcomposer.org/installer | php
 sudo mv composer.phar /usr/local/bin/composer
+sudo chmod +x /usr/local/bin/composer
 
 # 4. Prepare Directory (CRITICAL for GitHub Actions)
 # Create folder and give ownership to 'ubuntu' user so CI/CD can write to it
@@ -26,7 +27,7 @@ sudo chown -R ubuntu:ubuntu /var/www/html/backend
 # Add ubuntu user to www-data group
 sudo usermod -a -G www-data ubuntu
 
-# 5. Configure Nginx
+# 5. Configure Nginx  
 sudo rm /etc/nginx/sites-enabled/default
 
 cat <<EOF | sudo tee /etc/nginx/sites-available/backend

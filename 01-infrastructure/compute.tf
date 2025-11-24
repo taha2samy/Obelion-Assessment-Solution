@@ -51,4 +51,9 @@ resource "aws_instance" "backend" {
   tags = {
     Name = "Obelion-Backend-Server"
   }
+
+
+
+  user_data_replace_on_change = true
+
 }
