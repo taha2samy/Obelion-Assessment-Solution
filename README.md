@@ -101,7 +101,7 @@ For deep dives into the decisions, code logic, and proof of execution, please re
 1.  [**Infrastructure Report**](./docs/01-infrastructure.md) - Details on VPC, Security Groups, and RDS isolation.
 2.  [**CI/CD & Automation**](./docs/02-cicd-automation.md) - Explanation of GitHub Actions workflows and secrets management.
 3.  [**Monitoring Strategy**](./docs/03-monitoring-alerting.md) - How we configured CloudWatch Alarms and stress-tested the CPU.
-4.  [**Azure Migration Plan**](./docs/04-azure-migration-plan.md) - A consultancy-grade plan for migrating to Azure.
+4.  [**Azure Migration Plan**](./04-documentation/azure-migration-plan_database.md) - A consultancy-grade plan for migrating to Azure.
 
 ---
 
