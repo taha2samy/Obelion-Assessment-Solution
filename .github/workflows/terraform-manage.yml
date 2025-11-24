@@ -63,7 +63,7 @@ jobs:
         run: terraform apply -input=false -auto-approve tfplan
 
       - name: Update Secrets in App Repos
-        if: inputs.action == 'apply' && github.ref_name == 'main'
+        if: inputs.action == 'apply'
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}    
           FRONTEND_REPO: "taha2samy/uptime-kuma"
@@ -114,7 +114,6 @@ jobs:
           FRONTEND_IP=$(terraform output -raw frontend_public_ip)
           BACKEND_IP=$(terraform output -raw backend_public_ip)
           DB_ENDPOINT=$(terraform output -raw db_endpoint)
-          # NAT_IP=$(terraform output -raw nat_public_ip) # Uncomment if you have NAT
 
           echo "## 🚀 Infrastructure Report" >> $GITHUB_STEP_SUMMARY
           echo "| Resource | IP / Endpoint |" >> $GITHUB_STEP_SUMMARY
