@@ -2,28 +2,6 @@
 # Security Groups
 # ==========================================
 
-# 1. NAT Instance SG (Already added previously, ensuring it's here)
-resource "aws_security_group" "nat_sg" {
-  name        = "obelion-nat-sg"
-  description = "Security Group for fck-nat instance"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = { Name = "obelion-nat-sg" }
-}
 
 # 2. Frontend Security Group
 # Allows HTTP/HTTPS from anywhere, SSH from anywhere (or restricted IP)
@@ -116,49 +94,4 @@ resource "aws_security_group" "db_sg" {
   }
 
   tags = { Name = "obelion-db-sg" }
-}
-resource "aws_iam_role" "nat_role" {
-  name = "obelion-nat-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
-    }]
-  })
-}
-
-# 2. The Policy (Permissions to edit Routes & ENI)
-resource "aws_iam_policy" "nat_policy" {
-  name = "obelion-nat-policy"
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ec2:AttachNetworkInterface",
-          "ec2:ModifyNetworkInterfaceAttribute",
-          "ec2:AssociateAddress",
-          "ec2:DisassociateAddress",
-          "ec2:ReplaceRoute"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-# 3. Attach Policy to Role
-resource "aws_iam_role_policy_attachment" "nat_attach" {
-  role       = aws_iam_role.nat_role.name
-  policy_arn = aws_iam_policy.nat_policy.arn
-}
-
-# 4. Instance Profile (To attach role to EC2)
-resource "aws_iam_instance_profile" "nat_profile" {
-  name = "obelion-nat-profile"
-  role = aws_iam_role.nat_role.name
 }

@@ -17,9 +17,4 @@ data "aws_ami" "ubuntu" {
     values = ["x86_64"]
   }
 }
-resource "null_resource" "local_command_example" {
-  provisioner "local-exec" {
-    command = "echo 'Hello from local-exec on your machine!'"
-  }
-}
 

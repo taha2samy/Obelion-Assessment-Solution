@@ -1,36 +1,35 @@
 #!/bin/bash
 
-# Prevent interactive prompts during installation
+# Prevent interactive prompts
 export DEBIAN_FRONTEND=noninteractive
 
 echo "🚀 Starting Backend Setup..."
 
-# 1. Update System
+# 1. Update & Install Dependencies
 sudo apt-get update -y
-sudo apt-get upgrade -y
+sudo apt-get install -y nginx unzip git curl mysql-client software-properties-common
 
-# 2. Install Nginx and Utilities
-sudo apt-get install -y nginx unzip git curl mysql-client
-
-# 3. Add PHP Repository (Ondrej PPA for latest PHP versions)
-sudo apt-get install -y software-properties-common
+# 2. Install PHP 8.2
 sudo add-apt-repository ppa:ondrej/php -y
 sudo apt-get update -y
-
-# 4. Install PHP 8.2 and Required Extensions for Laravel
 sudo apt-get install -y php8.2 php8.2-fpm php8.2-mysql php8.2-mbstring \
     php8.2-xml php8.2-bcmath php8.2-curl php8.2-zip php8.2-intl php8.2-gd
 
-# 5. Install Composer Globally
+# 3. Install Composer
 curl -sS https://getcomposer.org/installer | php
 sudo mv composer.phar /usr/local/bin/composer
 
-# 6. Configure Nginx for Laravel
-# Remove default config
+# 4. Prepare Directory (CRITICAL for GitHub Actions)
+# Create folder and give ownership to 'ubuntu' user so CI/CD can write to it
+sudo mkdir -p /var/www/html/backend
+sudo chown -R ubuntu:ubuntu /var/www/html/backend
+# Add ubuntu user to www-data group
+sudo usermod -a -G www-data ubuntu
+
+# 5. Configure Nginx
 sudo rm /etc/nginx/sites-enabled/default
 
-# Create Laravel Nginx Config
-cat <<EOF | sudo tee /etc/nginx/sites-available/laravel
+cat <<EOF | sudo tee /etc/nginx/sites-available/backend
 server {
     listen 80;
     server_name _;
@@ -40,7 +39,6 @@ server {
     add_header X-Content-Type-Options "nosniff";
 
     index index.php;
-
     charset utf-8;
 
     location / {
@@ -64,16 +62,10 @@ server {
 }
 EOF
 
-# Enable the new config
-sudo ln -s /etc/nginx/sites-available/laravel /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/backend /etc/nginx/sites-enabled/
 
-# 7. Prepare Directory Permissions
-# Create directory and assign ownership to ubuntu user for CI/CD access
-sudo mkdir -p /var/www/html/backend
-sudo chown -R ubuntu:ubuntu /var/www/html/backend
-
-# 8. Restart Services
+# 6. Restart Services
 sudo systemctl restart nginx
 sudo systemctl restart php8.2-fpm
 
-echo "✅ Backend Setup Complete!"
+echo "✅ Backend Infrastructure Ready!"

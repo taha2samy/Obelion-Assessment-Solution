@@ -46,7 +46,7 @@ variable "private_subnet_cidr" {
 variable "instance_type" {
   description = "EC2 instance type for App Servers (Task: 1 Core, 1GB RAM)"
   type        = string
-  default     = "t2.micro" # x86 Architecture
+  default     = "t3.micro" # x86 Architecture
 }
 variable "ssh_public_key" {
   description = "Public key for SSH access"

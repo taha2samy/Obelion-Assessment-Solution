@@ -74,7 +74,7 @@ jobs:
           DB_ENDPOINT=$(terraform output -raw db_endpoint)
           
 
-          gh secret set FRONTEND_HOST -b "$FRONTEND_IP" -R $FRONTEND_REPO
+          gh variable set FRONTEND_HOST -b "$FRONTEND_IP" -R $FRONTEND_REPO
           gh secret set BACKEND_HOST -b "$BACKEND_IP" -R $BACKEND_REPO
           gh secret set DB_HOST -b "$DB_ENDPOINT" -R $BACKEND_REPO
 

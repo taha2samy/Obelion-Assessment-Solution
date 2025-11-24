@@ -40,23 +40,23 @@ resource "aws_cloudwatch_metric_alarm" "frontend_cpu_high" {
   }
 }
 
-# 2. Backend CPU Alarm
-resource "aws_cloudwatch_metric_alarm" "backend_cpu_high" {
-  alarm_name          = "backend-cpu-high"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 2
-  metric_name         = "CPUUtilization"
-  namespace           = "AWS/EC2"
-  period              = 120
-  statistic           = "Average"
-  threshold           = 50
-  alarm_description   = "This metric monitors ec2 cpu utilization for Backend"
-  actions_enabled     = true
+# # 2. Backend CPU Alarm
+# resource "aws_cloudwatch_metric_alarm" "backend_cpu_high" {
+#   alarm_name          = "backend-cpu-high"
+#   comparison_operator = "GreaterThanThreshold"
+#   evaluation_periods  = 2
+#   metric_name         = "CPUUtilization"
+#   namespace           = "AWS/EC2"
+#   period              = 120
+#   statistic           = "Average"
+#   threshold           = 50
+#   alarm_description   = "This metric monitors ec2 cpu utilization for Backend"
+#   actions_enabled     = true
 
-  alarm_actions = [aws_sns_topic.alerts.arn]
-  ok_actions    = [aws_sns_topic.alerts.arn]
+#   alarm_actions = [aws_sns_topic.alerts.arn]
+#   ok_actions    = [aws_sns_topic.alerts.arn]
 
-  dimensions = {
-    InstanceId = aws_instance.backend.id
-  }
-}
+#   dimensions = {
+#     InstanceId = aws_instance.backend.id
+#   }
+# }
